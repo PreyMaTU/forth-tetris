@@ -124,16 +124,28 @@ def clear_mass():
   draw_shape(mass, WIDTH, HEIGHT, 0, 0, '  ')  
 
 def mass_pixel_at(x, y):
-  return 1 if mass[ x+ y* WIDTH ] == 1 else 0
+  return mass[ x+ y* WIDTH ]
 
 def block_pixel_at(x, y):
-  return 1 if block[ x+ y* block_w] == 1 else 0
+  return block[ x+ y* block_w]
 
 def block_clear_at(x, y):
   return 1 if block[ x+ y* block_w] == 0 else 0
 
 def set_mass_at(x, y, value):
    mass[ x+ y* WIDTH ]= value
+
+def block_touches_floor():
+  return block_y+ block_h >= HEIGHT
+
+def block_touches_wall(dx):
+  if dx < 0:
+    return block_x <= 0
+  
+  if dx > 0:
+    return block_x+block_w >= WIDTH
+
+  return False
 
 def move_block(dx, dy):
   global mass, block, block_h, block_w, block_y, block_x
@@ -146,13 +158,12 @@ def move_block(dx, dy):
   clear_block()
 
   # Try to move down by one step
-  if dy > 0 and block_y+1+(block_h-1) < HEIGHT:
+  if dy > 0 and not block_touches_floor():
     block_y+= dy
 
   # Try to move left/right by one step
-  if block_x+dx >= 0 and block_x+dx+(block_w-1) < WIDTH:
-    if not block_touches_mass_x(dx):
-      block_x+= dx
+  if not block_touches_wall(dx) and not block_touches_mass_x(dx):
+    block_x+= dx
 
   # Draw block at new position
   draw_block()
@@ -240,8 +251,6 @@ def block_touches_mass(dx, dy):
       
   return False
 
-def block_touches_floor():
-  return block_y+ (block_h-1) >= HEIGHT-1
 
 def add_block_to_mass():
   global mass, block, block_h, block_w, block_y, block_x
