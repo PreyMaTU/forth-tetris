@@ -25,6 +25,18 @@ variable block_w
 variable block_h
 variable last_move_time
 
+: init_vars
+  0 mass WIDTH HEIGHT * memset
+  0 block BLOCK_SIZE memset
+  0 new_block BLOCK_SIZE memset
+
+  0 block_x !
+  0 block_y !
+  0 block_w !
+  0 block_h !
+  0 last_move_time !
+;
+
 : set_cursor ( x y -- )
   at-xy
 ;

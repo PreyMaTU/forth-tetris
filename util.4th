@@ -28,3 +28,12 @@
 : swap_variables ( addr1 addr2 -- )
   2dup @ swap @ rot ! swap !
 ;
+
+: memset ( value addr size -- )
+  0 do
+    2dup !
+    1 cells +
+  loop
+
+  2drop
+;
