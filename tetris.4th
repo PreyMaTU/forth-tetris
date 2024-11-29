@@ -41,18 +41,21 @@ variable last_move_time
   at-xy
 ;
 
-: pressed_a ( key_mask -- flag ) dup 1 and ;
-: pressed_d ( key_mask -- flag ) dup 2 and ;
-: pressed_p ( key_mask -- flag ) dup 4 and ;
-: pressed_s ( key_mask -- flag ) dup 8 and ;
-: pressed_space ( key_mask -- flag ) dup 16 and ;
+
+\ ****** Keyboard input ****** \
+
+: pressed_a     ( key_mask -- key_mask flag ) dup  1 and ;
+: pressed_d     ( key_mask -- key_mask flag ) dup  2 and ;
+: pressed_p     ( key_mask -- key_mask flag ) dup  4 and ;
+: pressed_s     ( key_mask -- key_mask flag ) dup  8 and ;
+: pressed_space ( key_mask -- key_mask flag ) dup 16 and ;
 
 : gather_pressed_keys ( -- key_mask )
-  0 \ key_mask
+  0 \ Push key_mask
   begin
     key?
   while
-    255 \ push dummy mask
+    255 \ Push dummy mask
 
     \ Get the current key and convert the dummy mask to the 
     \ bit for the key
@@ -69,6 +72,9 @@ variable last_move_time
   repeat
 ;
 
+
+\ ****** Printing and drawing functions ***** \
+
 \ Print the symbol a number of times
 : print_rep ( symbol number -- )
   0 do
@@ -78,8 +84,20 @@ variable last_move_time
 ;
 
 \ Prints space equal to field width
-: print_space
+: print_space ( -- )
   SPACE_CHAR WIDTH 2 * print_rep
+;
+
+
+: print_game_over  ( -- )
+  print_space cr
+  print_space cr
+  
+  ."        Game Over       " cr
+  
+  print_space cr
+  print_space cr
+
 ;
 
 : draw_shape { shape w h x y symbol -- }
@@ -118,6 +136,36 @@ variable last_move_time
   draw_shape
 ;
 
+: draw_mass ( -- )
+  mass WIDTH HEIGHT 0 0 SHAPE_CHAR draw_shape
+;
+
+: clear_mass ( -- )
+  mass WIDTH HEIGHT 0 0 SPACE_CHAR draw_shape 
+;
+
+
+\ ***** Pixel getter and setter helpers ***** \
+
+\ return -1 if the pixel x,y is set in the mass variable, 0 otherwise
+: mass_pixel_at ( x y -- flag )
+  WIDTH * + cells mass + @ 0<> 
+;
+
+: set_mass_pixel_at ( x y v -- )
+  -rot WIDTH * + cells mass + !
+;
+
+\ return -1 if the pixel x,y is set in the block variable, 0 otherwise
+: block_pixel_at ( x y -- flag )
+  block_w @ * + cells block + @ 0<> 
+;  
+
+\ return -1 if the pixel x,y is NOT set in the block variable, 0 otherwise
+: block_clear_at ( x y -- flag )
+  block_w @ * + cells block + @ 0<> invert
+;
+
 : copy_block ( source destination -- )
   BLOCK_SIZE 0 do 
     over @ \ s d s -> s d v
@@ -130,20 +178,8 @@ variable last_move_time
   2drop
 ;
 
-\ return -1 if the pixel x,y is set in the mass variable, 0 otherwise
-: mass_pixel_at ( x y -- value )
-  WIDTH * + cells mass + @ 0<> 
-;  
 
-\ return -1 if the pixel x,y is set in the block variable, 0 otherwise
-: block_pixel_at ( x y -- value )
-  block_w @ * + cells block + @ 0<> 
-;  
-
-\ return -1 if the pixel x,y is NOT set in the block variable, 0 otherwise
-: block_clear_at ( x y -- value )
-  block_w * + cells block + @ 0<> if 0 else -1 endif 
-; 
+\ ***** Block play field and mass checks ***** \
 
 : block_touches_floor ( -- flag )
   block_y @ block_h @ + HEIGHT >=
@@ -161,6 +197,68 @@ variable last_move_time
   false
 ;
 
+: block_touches_mass ( dx dy -- flag )
+  2dup 0= swap 0= and if
+    2drop false exit
+  endif
+
+  \ Add delta to block position
+  block_y @ + swap
+  block_x @ + swap
+
+  block_h @ 0 do    \ j
+    block_w @ 0 do  \ i
+      i j block_pixel_at if
+        2dup
+        j + swap  \ my = block_y + dy + j
+        i + swap  \ mx = block_x + dx + i
+
+        \ Check if mx and my are within bounds
+        2dup HEIGHT <  \ my < HEIGHT  &&
+        swap dup 0>=   \ mx >= 0      &&
+        swap WIDTH <   \ mx < HEIGHT
+        and and if
+          mass_pixel_at if
+            2drop true unloop unloop exit
+          endif
+        else
+          2drop
+        endif
+      endif
+    loop
+  loop
+
+  2drop false
+;
+
+: block_touches_mass_x ( dx -- flag )
+  0 block_touches_mass
+;
+
+: block_touches_mass_y ( -- flag )
+  0 1 block_touches_mass
+;
+
+: block_stuck_in_mass { block_array h w x y -- flag }
+  h 0 do    \ j
+    w 0 do  \ i
+      \ Check for pixel at block_array[i, j]
+      w j * i + cells block_array + @ 0<> if
+        x i +
+        y j +
+        mass_pixel_at if
+          true unloop unloop exit
+        endif
+      endif
+    loop
+  loop
+  false
+;
+
+
+
+\ ***** Block and playfield game functions ***** \
+
 : move_block { dx dy -- did_move }
   dx 0= dy 0= and if
     false exit
@@ -174,9 +272,9 @@ variable last_move_time
   endif
 
   dx block_touches_wall invert if
-    \ dx block_touches_mass_x if <-- TODO
+    dx block_touches_mass_x invert if
       dx block_x +!
-    \ endif
+    endif
   endif
 
   draw_block
@@ -200,7 +298,12 @@ variable last_move_time
     loop
   -1 +loop
 
-  \ block_stuck_in_mass <-- TODO
+  new_block
+  block_w @ block_h @
+  block_x @ block_y @
+  block_stuck_in_mass if
+    false exit
+  endif
 
   clear_block
 
@@ -212,6 +315,29 @@ variable last_move_time
   draw_block
 
   true
+;
+
+: add_block_to_mass ( -- )
+  block_h @ 0 do    \ j
+    block_w @ 0 do  \ i
+      i j block_pixel_at if
+        block_x @ i +
+        block_y @ j +
+        1 set_mass_pixel_at
+      endif
+    loop
+  loop
+;
+
+: merge_block_with_mass ( -- )
+  block_touches_floor
+  block_touches_mass_y
+  or if 
+    add_block_to_mass
+    true exit
+  endif
+
+  false
 ;
 
 \ Stores a random block in the block array and returns the width
@@ -228,6 +354,78 @@ variable last_move_time
     6 of block shape_line endof
   endcase
 ;
+
+\ ***** Mass line functions ***** \
+
+: is_top_line_empty ( -- flag )
+  WIDTH 0 do
+    i 0 mass_pixel_at if
+      false unloop exit
+    endif
+  loop
+
+  true
+;
+
+\ Returns the number of the first completed line beginning from the top
+\ or -1
+: find_complete_line ( -- line_num )
+  HEIGHT 0 do \ j
+    true
+    WIDTH 0 do \ i
+      i j mass_pixel_at and
+    loop
+    
+    if
+      \ Beware j is now called i outside the inner loop :(
+      i unloop exit
+    endif
+  loop
+
+  -1
+;
+
+\ line_num given as index between 0 and HEIGHT
+: remove_line ( line_num -- )
+  \ Loop runs from line_num .. 1
+  1 swap do \ j = height
+    WIDTH 0 do \ i
+      i j 
+      2dup 1 - mass_pixel_at
+      set_mass_pixel_at
+    loop
+  -1 +loop
+;
+
+
+: remove_complete_lines ( -- )
+  false \ did_remove_line
+
+  1 0 do \ for loop that does not count so that we can use leave -> while True + break
+    \ Get line number of first completed line or stop
+    find_complete_line dup 0< if
+      drop leave
+    endif
+
+    \ check if line was removed
+    swap invert if 
+      clear_mass
+    endif
+    
+    remove_line \ consumes line number
+
+    true \ at least one line was already removed
+
+  0 +loop
+
+  if \ did_remove_line
+    draw_mass
+  endif
+;
+
+
+\ ***** Game loop functions ***** \
+
 
 : set_new_block
   generate_random_block   \ --> Returns width and height
@@ -282,19 +480,19 @@ variable last_move_time
 ;
 
 
-: main 
-  setup_field
-
+: game_loop ( -- did_loose )
   set_new_block
 
-  1 0 do
+  false \ flag: need to check mass merging
+
+  begin
     gather_pressed_keys
 
-    pressed_p if
-      drop leave
-    endif
+    \ Stack: merge_flag keyboard_mask
 
-    false swap \ flag: need to check mass merging
+    pressed_p if
+      2drop false exit
+    endif
 
     pressed_space if
       swap
@@ -309,23 +507,50 @@ variable last_move_time
       drop 1 \ dy = 1
     endif
 
+    \ Stack: merge_flag keyboard_mask dx dy
+
     handle_move_keys
 
     move_block or \ or the merge flag
 
-    if
-      \ do the merging
+    \ Stack: merge_flag
+
+    dup if
+      drop false \ override the merge flag back to false
+
+      merge_block_with_mass if
+        remove_complete_lines
+        set_new_block
+
+        drop true \ force the merge flag to true
+      endif
+    endif
+
+    \ Stack: merge_flag
+
+    is_top_line_empty invert if
+      drop true exit
     endif
 
     1000 FRAME_RATE / ms \ Wait for milliseconds
 
-  0 +loop
+  again
+;
+
+: main
+  init_vars
+  setup_field
+
+  game_loop
 
   \ Move cursor below play field
   0 HEIGHT 2 + set_cursor
 
-  \ TODO print loose message
+  if
+    print_game_over
+  endif
 ;
 
 
 main bye
+
