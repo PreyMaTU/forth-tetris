@@ -1,6 +1,7 @@
 require random.fs
 
-\ Setup constants
+\ ****** Constants ****** \
+
 : WIDTH 14 ;
 : HEIGHT 20 ;
 : BLOCK_SIZE 6 ;
@@ -13,7 +14,7 @@ require random.fs
 require util.4th
 require shapes.4th
 
-\ Setup global variables, automatically initialized with 0
+\ ****** Global variables ****** \
 
 create mass WIDTH HEIGHT * cells allot 
 create block BLOCK_SIZE cells allot
@@ -25,7 +26,7 @@ variable block_w
 variable block_h
 variable last_move_time
 
-: init_vars
+: init_vars ( -- )
   0 mass WIDTH HEIGHT * memset
   0 block BLOCK_SIZE memset
   0 new_block BLOCK_SIZE memset
@@ -35,10 +36,6 @@ variable last_move_time
   0 block_w !
   0 block_h !
   0 last_move_time !
-;
-
-: set_cursor ( x y -- )
-  at-xy
 ;
 
 
@@ -75,7 +72,7 @@ variable last_move_time
 
 \ ****** Printing and drawing functions ***** \
 
-\ Print the symbol a number of times
+\ Print the symbol a given number of times
 : print_rep ( symbol number -- )
   0 do
     dup emit_utf8_char
@@ -100,6 +97,12 @@ variable last_move_time
 
 ;
 
+: set_cursor ( x y -- )
+  at-xy
+;
+
+\ Draws an array of pixels with a given symbol. Pixels that
+\ are not set in the array are kept transparent
 : draw_shape { shape w h x y symbol -- }
   h 0 do \ j
     w 0 do \ i
@@ -109,6 +112,7 @@ variable last_move_time
         y j +
         set_cursor
 
+        \ Emit the symbol twice to make it square-ish
         symbol emit_utf8_char
         symbol emit_utf8_char
       endif
@@ -147,25 +151,27 @@ variable last_move_time
 
 \ ***** Pixel getter and setter helpers ***** \
 
-\ return -1 if the pixel x,y is set in the mass variable, 0 otherwise
+\ Returns true if a given location has a pixel set in the mass
 : mass_pixel_at ( x y -- flag )
   WIDTH * + cells mass + @ 0<> 
 ;
 
+\ Sets a pixel in the pass to a given value
 : set_mass_pixel_at ( x y v -- )
   -rot WIDTH * + cells mass + !
 ;
 
-\ return -1 if the pixel x,y is set in the block variable, 0 otherwise
+\ Returns true if a given location has a pixel set in the current block
 : block_pixel_at ( x y -- flag )
   block_w @ * + cells block + @ 0<> 
 ;  
 
-\ return -1 if the pixel x,y is NOT set in the block variable, 0 otherwise
+\ Returns true if a given location has no pixel set in the current block
 : block_clear_at ( x y -- flag )
   block_w @ * + cells block + @ 0<> invert
 ;
 
+\ Copy the data from a given block to another one
 : copy_block ( source destination -- )
   BLOCK_SIZE memcopy
 ;
@@ -177,6 +183,9 @@ variable last_move_time
   block_y @ block_h @ + HEIGHT >=
 ;
 
+\ Returns true if the current block touches either the left or right wall.
+\ If the dx value is negative the left wall gets checked, when it is positive
+\ the right one, otherwise false is returned.
 : block_touches_wall ( dx -- flag )
   dup 0< if 
     drop block_x @ 0<= exit
@@ -189,6 +198,9 @@ variable last_move_time
   false
 ;
 
+\ Returns true if the current block touches the mass on a given side. dx and dy
+\ describe in which direction to check. dx for left/right and dy for bottom if it
+\ is positive.
 : block_touches_mass ( dx dy -- flag )
   2dup 0= swap 0= and if
     2drop false exit
@@ -223,14 +235,18 @@ variable last_move_time
   2drop false
 ;
 
+\ Returns true if the current block touches the mass either left or right as
+\ defined by dx.
 : block_touches_mass_x ( dx -- flag )
   0 block_touches_mass
 ;
 
+\ Returns true if the current block touches the mass on the bottom side.
 : block_touches_mass_y ( -- flag )
   0 1 block_touches_mass
 ;
 
+\ Returns true if the current block intersects with the mass anywhere.
 : block_stuck_in_mass { block_array h w x y -- flag }
   h 0 do    \ j
     w 0 do  \ i
@@ -251,6 +267,9 @@ variable last_move_time
 
 \ ***** Block and playfield game functions ***** \
 
+\ Try to move a block in a given direction as a dx dy vector. The vector
+\ components can be between -1...1 for x and 0...1 for y. If no movement
+\ is performed false is returned.
 : move_block { dx dy -- did_move }
   dx 0= dy 0= and if
     false exit
@@ -274,6 +293,9 @@ variable last_move_time
   true
 ;
 
+\ Try to rotate a block counter clock wise around its origin in the left
+\ top corner. If the rotation fails because the rotated block would 
+\ interfere with the walls or the mass false gets returned.
 : rotate_block ( -- did_rotate )
   \ Check that rotation does not interfere with walls
   block_x @ block_h @ + WIDTH >=
@@ -309,6 +331,9 @@ variable last_move_time
   true
 ;
 
+\ Adds the shape of the current block to the mass. Only the
+\ set pixels of the block are considered, as to not punch holes
+\ into the existing mass array pixels.
 : add_block_to_mass ( -- )
   block_h @ 0 do    \ j
     block_w @ 0 do  \ i
@@ -321,6 +346,11 @@ variable last_move_time
   loop
 ;
 
+\ Try to merge the current block with the mass. The block gets
+\ merged when it either hits the floor, or when it touches the
+\ mass with its bottom side. When the block is merged true is
+\ returned else the mass and block remain unchanged and false
+\ gets returned.
 : merge_block_with_mass ( -- )
   block_touches_floor
   block_touches_mass_y
@@ -349,6 +379,7 @@ variable last_move_time
 
 \ ***** Mass line functions ***** \
 
+\ Returns whether the top line of the mass does not have any pixels set.
 : is_top_line_empty ( -- flag )
   WIDTH 0 do
     i 0 mass_pixel_at if
@@ -360,7 +391,7 @@ variable last_move_time
 ;
 
 \ Returns the number of the first completed line beginning from the top
-\ or -1
+\ or -1.
 : find_complete_line ( -- line_num )
   HEIGHT 0 do \ j
     true
@@ -377,7 +408,8 @@ variable last_move_time
   -1
 ;
 
-\ line_num given as index between 0 and HEIGHT
+\ Remove a given line (index between 0 and HEIGHT) and move all lines
+\ above it one step down to fill its place.
 : remove_line ( line_num -- )
   \ Loop runs from line_num .. 1
   1 swap do \ j = height
@@ -389,7 +421,7 @@ variable last_move_time
   -1 +loop
 ;
 
-
+\ Remove all completed lines in the mass and compact the mass downwards.
 : remove_complete_lines ( -- )
   false \ did_remove_line
 
@@ -448,6 +480,8 @@ variable last_move_time
   endif
 ;
 
+\ Consume the key mask and update the dx dy movement vector if
+\ a movement key (a, d, s) was pressed.
 : handle_move_keys ( key_mask dx dy -- dx dy )
   rot
   case
@@ -473,9 +507,9 @@ variable last_move_time
 
 
 : game_loop ( -- did_loose )
-  set_new_block
+  set_new_block \ Select initial block
 
-  false \ flag: need to check mass merging
+  false         \ Flag: need to check mass merging
 
   begin
     gather_pressed_keys
@@ -496,7 +530,7 @@ variable last_move_time
     0 \ dy
 
     drop_block_now if
-      drop 1 \ dy = 1
+      drop 1 \ Set dy = 1
     endif
 
     \ Stack: merge_flag keyboard_mask dx dy
@@ -508,13 +542,13 @@ variable last_move_time
     \ Stack: merge_flag
 
     dup if
-      drop false \ override the merge flag back to false
+      drop false \ Override the merge flag back to false
 
       merge_block_with_mass if
         remove_complete_lines
         set_new_block
 
-        drop true \ force the merge flag to true
+        drop true \ Force the merge flag to true
       endif
     endif
 

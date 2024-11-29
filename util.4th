@@ -13,6 +13,8 @@
   endif
 ;
 
+\ Emit a single UTF-8 encoded character, where code point data is
+\ in the given parameter as a 32bit integer.
 : emit_utf8_char ( char -- )
   0 \ Force printing the char
 
@@ -24,11 +26,14 @@
   mask_8 emit     \ always print the last byte
 ;
 
+
 \ Swaps the contents of two variables
 : swap_variables ( addr1 addr2 -- )
   2dup @ swap @ rot ! swap !
 ;
 
+
+\ Copy the contents from the source array to the destination array.
 : memcopy ( source destination size -- )
   0 do 
     over @ \ s d s -> s d v

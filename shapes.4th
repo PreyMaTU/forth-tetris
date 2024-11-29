@@ -1,8 +1,11 @@
 
+\ Copies the shape of a block from stack elements into 
+\ a given array. The number of stack elements provided must
+\ match the BLOCK_SIZE constant.
 : set_shape ( block_address a b c d e f -- )
   BLOCK_SIZE pick \ ba a b c d e f ba
 
-  BLOCK_SIZE cells + \ Move the block array pointer behind the last cell
+  BLOCK_SIZE cells +  \ Move the block array pointer behind the last cell
 
   BLOCK_SIZE 0 do
     1 cells -         \ Move one cell towards the begin
@@ -11,6 +14,8 @@
 
   2drop \ drop both the remaining block_adresses
 ;
+
+\ ****** Define all the possible block shapes ****** \
 
 : shape_t ( block_address -- width height )
   0 1 0
