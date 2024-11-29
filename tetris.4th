@@ -167,15 +167,7 @@ variable last_move_time
 ;
 
 : copy_block ( source destination -- )
-  BLOCK_SIZE 0 do 
-    over @ \ s d s -> s d v
-    over ! \ s d v d -> s d
-    1 cells \ s d o
-    swap over + \ s o d+o
-    -rot + swap \ s+o d+o
-  loop
-
-  2drop
+  BLOCK_SIZE memcopy
 ;
 
 
