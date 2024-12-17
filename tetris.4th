@@ -451,7 +451,7 @@ variable last_move_time
 \ ***** Game loop functions ***** \
 
 
-: set_new_block
+: set_new_block ( -- )
   generate_random_block   \ --> Returns width and height
   block_h !
   block_w !
@@ -492,7 +492,7 @@ variable last_move_time
 ;
 
 \ Clears the page and draws the border around the play field
-: setup_field
+: setup_field   ( -- )
   page          \ Clear the page and set cursor to (0,0)
   
   HEIGHT 0 do
