@@ -351,7 +351,7 @@ variable last_move_time
 \ mass with its bottom side. When the block is merged true is
 \ returned else the mass and block remain unchanged and false
 \ gets returned.
-: merge_block_with_mass ( -- )
+: merge_block_with_mass ( -- did_merge )
   block_touches_floor
   block_touches_mass_y
   or if 
