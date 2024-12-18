@@ -56,12 +56,12 @@ variable last_move_time
     \ Get the current key and convert the dummy mask to the 
     \ bit for the key
     case key toupper
-      65          of pressed_a     endof \ A
-      68          of pressed_d     endof \ D
-      80          of pressed_p     endof \ P
-      83          of pressed_s     endof \ S
-      0 swap                             \ default set 0
+      'A'     of pressed_a     endof  \ A
+      'D'     of pressed_d     endof  \ D
+      'P'     of pressed_p     endof  \ P
+      'S'     of pressed_s     endof  \ S
       bl      of pressed_space endof  \ Space
+      0 swap                          \ default set 0
     endcase
     
     nip or \ Combine the bit with the bit_mask
