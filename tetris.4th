@@ -7,7 +7,6 @@ require random.fs
 : BLOCK_SIZE 6 ;
 : FRAME_RATE 10 ;
 
-: SPACE_CHAR 32 ;
 : BORDER_CHAR 14849703 ; \ ▧
 : SHAPE_CHAR 14849672 ; \ █
 
@@ -61,8 +60,8 @@ variable last_move_time
       68          of pressed_d     endof \ D
       80          of pressed_p     endof \ P
       83          of pressed_s     endof \ S
-      SPACE_CHAR  of pressed_space endof \ Space
       0 swap                             \ default set 0
+      bl      of pressed_space endof  \ Space
     endcase
     
     nip or \ Combine the bit with the bit_mask
@@ -82,7 +81,7 @@ variable last_move_time
 
 \ Prints space equal to field width
 : print_space ( -- )
-  SPACE_CHAR WIDTH 2 * print_rep
+  bl WIDTH 2 * print_rep
 ;
 
 
@@ -126,7 +125,7 @@ variable last_move_time
   block_h @
   block_x @
   block_y @
-  SPACE_CHAR
+  bl
   draw_shape
 ;
 
@@ -145,7 +144,7 @@ variable last_move_time
 ;
 
 : clear_mass ( -- )
-  mass WIDTH HEIGHT 0 0 SPACE_CHAR draw_shape 
+  mass WIDTH HEIGHT 0 0 bl draw_shape 
 ;
 
 
