@@ -292,6 +292,18 @@ variable last_move_time
   true
 ;
 
+
+\ Creates a copy of the current shape in block that is rotated counter-clock wise.
+\ Reads from the global block and modifies the global new_block variables.
+: make_rotated_new_block ( -- )
+  0 block_w @ 1- do       \ j -> block_w-1 ... 0
+    block_h @ 0 do        \ i -> 0 ... block_h
+      i block_w @ * j + cells block + @                     \ Get block[j, i]
+      block_w @ 1- j - block_h @ * i + cells new_block + !  \ Store new_block[i, block_w-1-j]
+    loop
+  -1 +loop
+;
+
 \ Try to rotate a block counter clock wise around its origin in the left
 \ top corner. If the rotation fails because the rotated block would 
 \ interfere with the walls or the mass false gets returned.
@@ -304,12 +316,7 @@ variable last_move_time
   endif
 
   \ Create a rotated copy of the block in new_block
-  0 block_w @ 1- do       \ j -> block_w-1 ... 0
-    block_h @ 0 do        \ i -> 0 ... block_h
-      i block_w @ * j + cells block + @                     \ Get block[j, i]
-      block_w @ 1- j - block_h @ * i + cells new_block + !  \ Store new_block[i, block_w-1-j]
-    loop
-  -1 +loop
+  make_rotated_new_block
 
   new_block
   block_w @ block_h @
