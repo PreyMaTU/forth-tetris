@@ -7,6 +7,18 @@
   and
 ;
 
+\ Checks whether both components of a 2D vector are zero
+: is_zero_vector ( x y -- flag )
+  0= swap 0= and
+;
+
+\ Adds two 2D vectors component wise
+: vector_add ( x1 y1 x2 y2 -- x y )
+  rot +
+  -rot +
+  swap
+;
+
 \ Swaps the contents of two variables
 : swap_variables ( addr1 addr2 -- )
   2dup @ swap @ rot ! swap !

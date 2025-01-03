@@ -215,20 +215,18 @@ variable last_move_time
 \ describe in which direction to check. dx for left/right and dy for bottom if it
 \ is positive.
 : block_touches_mass ( dx dy -- flag )
-  2dup 0= swap 0= and if
+  2dup is_zero_vector if
     2drop false exit
   endif
 
   \ Add delta to block position
-  block_y @ + swap
-  block_x @ + swap
+  block_x @ block_y @ vector_add
 
   block_h @ 0 do    \ j
     block_w @ 0 do  \ i
       i j block_pixel_at if
         2dup
-        j + swap  \ my = block_y + dy + j
-        i + swap  \ mx = block_x + dx + i
+        i j vector_add \ Add i & j to mx & my
 
         safe_mass_pixel_at if
           \ Drop dx & dy 
@@ -277,7 +275,7 @@ variable last_move_time
 \ components can be between -1...1 for x and 0...1 for y. If no movement
 \ is performed false is returned.
 : move_block { dx dy -- did_move }
-  dx 0= dy 0= and if
+  dx dy is_zero_vector if
     false exit
   endif
 
