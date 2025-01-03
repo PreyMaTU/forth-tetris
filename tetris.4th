@@ -7,8 +7,9 @@ require random.fs
 : BLOCK_SIZE 6 ;
 : FRAME_RATE 10 ;
 
-: BORDER_CHAR 14849703 ; \ ▧
-: SHAPE_CHAR 14849672 ; \ █
+: BORDER_CHAR ( -- addr len ) "▧" ;
+: SHAPE_CHAR ( -- addr len ) "█" ;
+: SPACE_CHAR ( -- addr len ) " " ;
 
 require util.4th
 require shapes.4th
@@ -72,16 +73,16 @@ variable last_move_time
 \ ****** Printing and drawing functions ***** \
 
 \ Print the symbol a given number of times
-: print_rep ( symbol number -- )
+: print_rep ( symbol_addr symbol_len number -- )
   0 do
-    dup emit_utf8_char
+    2dup type
   loop
   drop
 ;
 
 \ Prints space equal to field width
 : print_space ( -- )
-  bl WIDTH 2 * print_rep
+  WIDTH 2 * spaces
 ;
 
 
@@ -102,7 +103,7 @@ variable last_move_time
 
 \ Draws an array of pixels with a given symbol. Pixels that
 \ are not set in the array are kept transparent
-: draw_shape { shape w h x y symbol -- }
+: draw_shape { shape w h x y symbol_addr symbol_len -- }
   h 0 do \ j
     w 0 do \ i
       j w * i + cells shape + @ \ get pixel shape[i, j]
@@ -112,8 +113,7 @@ variable last_move_time
         set_cursor
 
         \ Emit the symbol twice to make it square-ish
-        symbol emit_utf8_char
-        symbol emit_utf8_char
+        symbol_addr symbol_len 2dup type type
       endif
     loop
   loop
@@ -125,7 +125,7 @@ variable last_move_time
   block_h @
   block_x @
   block_y @
-  bl
+  SPACE_CHAR
   draw_shape
 ;
 
@@ -144,7 +144,7 @@ variable last_move_time
 ;
 
 : clear_mass ( -- )
-  mass WIDTH HEIGHT 0 0 bl draw_shape 
+  mass WIDTH HEIGHT 0 0 SPACE_CHAR draw_shape 
 ;
 
 
@@ -495,9 +495,9 @@ variable last_move_time
   page          \ Clear the page and set cursor to (0,0)
   
   HEIGHT 0 do
-    BORDER_CHAR emit_utf8_char
+    BORDER_CHAR type
     print_space
-    BORDER_CHAR emit_utf8_char
+    BORDER_CHAR type
     cr
   loop
 
