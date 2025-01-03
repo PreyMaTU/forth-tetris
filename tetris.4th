@@ -155,6 +155,20 @@ variable last_move_time
   WIDTH * + cells mass + @ 0<> 
 ;
 
+\ Similar to mass_pixel_at but performs bounds checks and returns false
+\ for invalid coords
+: safe_mass_pixel_at ( x y -- flag )
+  2dup
+  0 HEIGHT within_interval swap
+  0 WIDTH within_interval and
+
+  invert if
+    2drop false exit
+  endif
+
+  mass_pixel_at
+;
+
 \ Sets a pixel in the pass to a given value
 : set_mass_pixel_at ( x y v -- )
   -rot WIDTH * + cells mass + !
@@ -216,16 +230,9 @@ variable last_move_time
         j + swap  \ my = block_y + dy + j
         i + swap  \ mx = block_x + dx + i
 
-        \ Check if mx and my are within bounds
-        2dup HEIGHT <  \ my < HEIGHT  &&
-        swap dup 0>=   \ mx >= 0      &&
-        swap WIDTH <   \ mx < HEIGHT
-        and and if
-          mass_pixel_at if
-            2drop true unloop unloop exit
-          endif
-        else
-          2drop
+        safe_mass_pixel_at if
+          \ Drop dx & dy 
+          2drop true unloop unloop exit
         endif
       endif
     loop

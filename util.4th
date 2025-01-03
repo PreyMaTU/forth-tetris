@@ -1,4 +1,12 @@
 
+\ Check if a given integer is within a set interval, where the lower
+\ bound is inclusive and the upper bound is exclusive --> lower <= value < upper
+: within_interval ( val min_inclusive max_exclusive -- flag )
+  -rot over <=
+  -rot >
+  and
+;
+
 \ Swaps the contents of two variables
 : swap_variables ( addr1 addr2 -- )
   2dup @ swap @ rot ! swap !
